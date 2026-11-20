@@ -11,6 +11,7 @@ const ui = {
   subtitle: $('objective-subtitle'), ending: $('ending-line'), dialogue: $('dialogue-modal'),
   dialogueName: $('dialogue-name'), dialogueLine: $('dialogue-line'), dialogueOptions: $('dialogue-options')
 };
+const guideUi = { text: $('guide-text'), voice: $('voice-toggle'), sfx: $('sfx-toggle'), count: $('watch-count') };
 const palette = {
   ink: 0x302b36, stone: 0xf0dfbd, stoneShade: 0xd6bd91, shadowStone: 0x917d68,
   gold: 0xe9b955, paleGold: 0xffdb7d, green: 0x174e37, green2: 0x377b4c,
@@ -41,6 +42,7 @@ const obstacles = [];
 const movingObjects = [];
 const npcs = [];
 const watchPostObjects = [];
+const watchers = [];
 const keys = new Set();
 let playing = false, paused = false, mapOpen = false, crisis = false, escaped = false, dialogueOpen = false;
 let bridgeGateOpen=false, bridgeStarted=false, teleporting=false, montageQueued=false;
@@ -60,6 +62,7 @@ let isDragging = false, activePointer = -1;
 let fadedFoliage = null;
 let mouseGround = new THREE.Vector3(0, 0, 1);
 let animationRequest = 0;
+let audioContext = null, voiceEnabled = true, sfxEnabled = true, lastGuideKey = '';
 
 const toonRamp = (() => {
   const colors = new Uint8Array([82,82,92, 145,145,154, 205,205,212, 255,255,255]);
@@ -653,16 +656,26 @@ function capsulePart(parent, position, radius, length, material) {
 }
 
 function createGuard() {
-  const pt = district.guard.points[0]; guard = group(worldRoot, new THREE.Vector3(pt.x, 0, pt.z)); guard.name = 'Royal watch · guard';
-  const v = group(guard, new THREE.Vector3(0, 0, 0)); guard.userData.visual = v;
+  district.guard.points.forEach((pt, index) => {
+  const actor = group(worldRoot, new THREE.Vector3(pt.x, 0, pt.z));
+  actor.name = `Royal watch · ${pt.post ?? `post ${index + 1}`}`;
+  actor.rotation.y=Math.atan2(pt.look?.x ?? 0,pt.look?.z ?? -1);
+  actor.userData.postName=pt.post ?? `Watch Post ${index + 1}`;
+  actor.userData.postPosition=new THREE.Vector3(pt.x,0,pt.z);
+  actor.userData.postYaw=actor.rotation.y;
+  actor.userData.watchState='PATROL'; actor.userData.watchSuspicion=0;
+  actor.userData.watchTarget=new THREE.Vector3(pt.x,0,pt.z);
+  actor.userData.watchLastSeen=new THREE.Vector3(pt.x,0,pt.z);
+  watchers.push(actor); if(index===0) guard=actor;
+  const v = group(actor, new THREE.Vector3(0, 0, 0)); actor.userData.visual = v;
   const body = mesh(new THREE.CapsuleGeometry(.38, .67, 5, 12), M.red, v, { position: new THREE.Vector3(0, 1.15, 0) }); body.scale.set(1.1, 1.3, .92); outlined(body, 1.04);
   const breast = sphere(v, [0, 1.42, .2], [.43, .47, .19], M.bronze, 16, true);
   for (const s of [-1, 1]) {
     const plate = sphere(v, [s * .43, 1.69, .03], [.36, .24, .35], M.gold, 14, true); plate.rotation.z = s * -.2;
     const arm = group(v, new THREE.Vector3(s * .52, 1.37, .01));
     capsulePart(arm, [0, -.28, 0], .17, .42, M.bronze); sphere(arm, [0, -.61, .06], [.15, .16, .14], M.cream, 10);
-    guard.userData['arm' + s] = arm;
-    const leg = group(v, new THREE.Vector3(s * .2, .35, 0)); capsulePart(leg, [0, -.23, 0], .155, .42, M.red); guard.userData['leg' + s] = leg;
+    actor.userData['arm' + s] = arm;
+    const leg = group(v, new THREE.Vector3(s * .2, .35, 0)); capsulePart(leg, [0, -.23, 0], .155, .42, M.red); actor.userData['leg' + s] = leg;
   }
   cylinder(v, [0, 1.89, 0], .15, .15, .22, M.cream, 12);
   sphere(v, [0, 2.16, 0], [.36, .38, .32], M.bronze, 18, true);
@@ -683,14 +696,16 @@ function createGuard() {
   const staff = cylinder(v, [-.78, .88, -.05], .045, .055, 2.0, M.wood, 8); staff.rotation.z = -.12;
   sphere(v, [-.82, 1.94, -.05], [.15, .18, .15], M.brightGold, 12);
   const spearTip=mesh(new THREE.ConeGeometry(.11,.38,8),M.brightGold,v,{position:new THREE.Vector3(-.79,2.18,-.05)}); spearTip.rotation.z=Math.PI;
-  const badgeText = textSprite('WATCH', '#fff0cc', '#913e3e'); badgeText.scale.set(1.45, .36, 1); badgeText.position.set(0, 3.65, 0); guard.add(badgeText);
-  guard.userData.visualChildren = v.children;
+  const badgeText = textSprite(pt.post?.toUpperCase() ?? 'WATCH', '#fff0cc', '#913e3e'); badgeText.scale.set(1.85, .38, 1); badgeText.position.set(0, 3.65, 0); actor.add(badgeText);
+  const postRingMaterial = new THREE.MeshBasicMaterial({ color: 0xd8ad5e, transparent: true, opacity: .52, side: THREE.DoubleSide });
+  const postRing = torus(actor, [0, .055, 0], .58, .035, postRingMaterial); postRing.rotation.x = Math.PI / 2;
+  actor.userData.postRing = postRing; actor.userData.postRingMaterial = postRingMaterial;
+  actor.userData.visualChildren = v.children;
+  });
 }
 
 function createNpcs() {
-  const guardData = district.npcs.find(n => n.type === 'guard');
-  guard.userData.npcData = guardData ?? { id: 'royal-watch', type: 'guard', name: 'Royal Watch', talkRadius: 3.6 };
-  npcs.push({ ...guard.userData.npcData, object: guard });
+  watchers.forEach((object,index)=>npcs.push({ id:`royal-watch-${index+1}`,type:'guard',name:object.userData.postName,talkRadius:2.7,object }));
   for (const data of district.npcs.filter(n => n.type !== 'guard')) {
     const object = createVendor(data); npcs.push({ ...data, object });
   }
@@ -773,6 +788,13 @@ function chooseDialogue(index) {
     else if (index === 1) { const point = new THREE.Vector3(10.1, 0, 1.8); sound = { point, until: performance.now() + 3800 }; investigatePoint.copy(point); if (guardState !== 'CHASE') guardState = 'INVESTIGATE'; pulseAt(point, palette.gold); dialogueReaction = 'Mira rings the counter bell. The guard turns toward the market.'; setToast('Mira’s bell pulls the guard east.', 3); }
     else { suspicion = Math.min(1, suspicion + .16); dialogueReaction = '“Inspector? Then inspect this invoice.” Mira waves a very long bill; the guard notices the commotion.'; if (guardState !== 'CHASE') { investigatePoint.copy(dialogueNpc.object.position); guardState = 'SUSPICIOUS'; } setToast('Your title is unconvincing, but the commotion changes the patrol.', 3); }
   }
+  if (isGuard) {
+    const watched = dialogueNpc.object, d = watched.userData;
+    if (guardState === 'INVESTIGATE') { d.watchState = 'INVESTIGATE'; d.watchTarget.copy(investigatePoint); d.watchReactUntil = performance.now() + 260; d.watchHoldUntil = guardHoldUntil || performance.now() + 5000; }
+    else if (guardState === 'SUSPICIOUS') { d.watchState = 'SUSPICIOUS'; d.watchLastSeen.copy(player.position); d.watchSuspicion = Math.min(1, Math.max(d.watchSuspicion, suspicion)); }
+  }
+  if (!isGuard && index === 1) playSfx('bell');
+  if (!isGuard && index === 2) playSfx('sound');
   ui.dialogueLine.textContent = dialogueReaction;
 }
 function closeDialogue() {
@@ -823,6 +845,7 @@ function buildCloudBanks() {
 }
 
 function beginGame() {
+  unlockAudio(); lastGuideKey = '';
   closeDialogue(); guardTrust = .12; guardHoldUntil = 0; cameraActualDistance = cameraDistance;
   ui.menu.classList.add('hidden'); ui.hud.classList.remove('hidden'); ui.crosshair.classList.remove('hidden');
   ui.profile.classList.add('hidden'); ui.options.classList.add('hidden'); ui.end.classList.add('hidden');
@@ -833,18 +856,77 @@ function beginGame() {
     player.userData.visual.visible = true;
   }
   if (guard) {
-    const p = district.guard.points[0]; guard.position.set(p.x, 0, p.z); patrolIndex = 0;
+    for(const w of watchers){const d=w.userData;w.position.copy(d.postPosition);w.rotation.y=d.postYaw;d.watchState='PATROL';d.watchSuspicion=0;d.watchTarget.copy(d.postPosition);d.watchLastSeen.copy(d.postPosition);d.lastHeard=null;d.lastDecoy=null;d.watchHoldUntil=0;}
+    patrolIndex = 0;
   }
   suspicion = 0; crisis = false; escaped = false; guardState = 'PATROL'; sound = null;
+  caughtUntil=0;lastPlayerSpeed=0;
   bridgeGateOpen=false; bridgeStarted=false; teleporting=false; montageQueued=false; bridgeGate.userData.open=false;
   if(player?.userData.visual) player.userData.visual.scale.setScalar(1);
   bridgeGate.userData.doors[0].rotation.y=0; bridgeGate.userData.doors[1].rotation.y=0;
   if (decoy) { scene.remove(decoy); decoy = null; }
   toast('Wander first. The court has a habit of noticing things.', 4);
+  updateGuide();
   renderer.domElement.focus();
 }
 function setToast(message, duration = 2.8) {
   ui.toast.textContent = message; ui.toast.classList.remove('hidden'); toastUntil = performance.now() + duration * 1000;
+}
+function unlockAudio() {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return;
+  if (!audioContext) audioContext = new AudioCtor();
+  if (audioContext.state === 'suspended') audioContext.resume();
+}
+function playSfx(kind) {
+  if (!sfxEnabled) return;
+  unlockAudio(); if (!audioContext) return;
+  const now = audioContext.currentTime;
+  const notes = {
+    illusion: [[520, .08], [780, .14], [1040, .2]],
+    sound: [[250, .06], [410, .13]],
+    bell: [[660, .04], [990, .2]],
+    gate: [[180, .04], [330, .17], [494, .3]],
+    caught: [[420, .02], [290, .1], [190, .22]],
+    portal: [[392, .02], [587, .12], [784, .28]]
+  }[kind] ?? [[440, .1]];
+  for (const [frequency, offset] of notes) {
+    const oscillator = audioContext.createOscillator(), gain = audioContext.createGain();
+    oscillator.type = kind === 'sound' || kind === 'gate' ? 'triangle' : 'sine';
+    oscillator.frequency.setValueAtTime(frequency, now + offset);
+    gain.gain.setValueAtTime(.0001, now + offset);
+    gain.gain.exponentialRampToValueAtTime(kind === 'caught' ? .075 : .045, now + offset + .012);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + offset + .22);
+    oscillator.connect(gain); gain.connect(audioContext.destination);
+    oscillator.start(now + offset); oscillator.stop(now + offset + .24);
+  }
+}
+function speakGuide(text) {
+  if (!voiceEnabled || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = .96; utterance.pitch = 1.02; utterance.volume = .75;
+  window.speechSynthesis.speak(utterance);
+}
+function updateGuide() {
+  if (!playing || !player || !guideUi.text) return;
+  let key, text, spoken;
+  const nearGate = bridgeGate && distanceXZ(player.position, bridgeGate.position) < 7.2;
+  const nearPassage = distanceXZ(player.position, district.escape.find(e => e.id === 'west-side-passage')) < 4.5;
+  if (!crisis) {
+    key = 'explore'; text = 'WASD explores · hold RMB and drag to orbit.<br>Walk north toward the palace gate to begin.'; spoken = 'Explore Asgard with W A S D. Hold the right mouse button and drag to orbit. Head north when you are ready.';
+  } else if (escaped || bridgeStarted) {
+    key = 'bridge'; text = 'Cross the Rainbow Bridge to the glowing Bifrost ring.<br>The five watch posts stay back in the courtyard.'; spoken = 'Cross the Rainbow Bridge and step into the glowing Bifrost ring.';
+  } else if (nearGate) {
+    key = 'gate'; text = 'The Bridge Gate opens as you approach.<br>The West Passage is an alternate route to the same bridge.'; spoken = 'The Bridge Gate opens when you approach. The West Passage is another way to the bridge.';
+  } else if (nearPassage) {
+    key = 'passage'; text = 'This West Passage skips the gate and joins the bridge.<br>Keep an eye on the minimap for all five watchers.'; spoken = 'The West Passage joins the bridge. Check your minimap for the five watchers.';
+  } else {
+    key = 'tricks'; text = 'Q places an illusion at the cursor · E sends a sound there.<br>Watch helmets turn, then use the opening. T lets you talk.'; spoken = 'Use Q to place an illusion and E to send a sound toward your cursor. Watch who turns, then move through the opening.';
+  }
+  guideUi.text.innerHTML = text;
+  guideUi.count.textContent = `${watchers.length} WATCH POSTS`;
+  if (key !== lastGuideKey) { lastGuideKey = key; speakGuide(spoken); }
 }
 function showCrisis() {
   if (crisis) return; crisis = true; crisisAt = performance.now();
@@ -852,6 +934,7 @@ function showCrisis() {
   ui.subtitle.textContent = 'Use the Bridge Gate or slip through the West Passage.';
   ui.intro.classList.remove('hidden');
   setToast('Royal watch: “Nobody leaves until the golden apple turns up.”', 3.5);
+  playSfx('gate'); lastGuideKey = ''; updateGuide();
   window.setTimeout(() => ui.intro.classList.add('hidden'), 3100);
 }
 function setMap(open) {
@@ -885,8 +968,10 @@ function castIllusion() {
   if (decoy) scene.remove(decoy);
   decoy = makeDecoy(point); decoyUntil = performance.now() + 8500;
   investigatePoint.copy(point);
-  if (distanceXZ(guard.position, point) < 10 && canSeePoint(guard, point)) { guardState = 'INVESTIGATE'; guardReactUntil = performance.now() + 280; }
-  setToast('A green afterimage appears where you aimed. The guard turns to look.', 3.5);
+  const noticing=watchers.filter(w=>distanceXZ(w.position,point)<11&&canSeePoint(w,point));
+  for(const w of noticing){w.userData.watchState='INVESTIGATE';w.userData.watchTarget.copy(point);w.userData.watchHoldUntil=performance.now()+5200;w.userData.watchReactUntil=performance.now()+300;}
+  playSfx('illusion');
+  setToast(noticing.length ? `A green afterimage appears. ${noticing.length} watcher${noticing.length===1?'':'s'} turn${noticing.length===1?'s':''} to investigate.` : 'A green afterimage shimmers outside the watchers’ sightlines.', 3.5);
 }
 function makeDecoy(point) {
   const g = group(scene, new THREE.Vector3(point.x, 0, point.z));
@@ -901,8 +986,11 @@ function makeDecoy(point) {
 function misdirectSound() {
   if (!playing) return;
   const point = getAimPoint(); sound = { point: point.clone(), until: performance.now() + 2600 };
+  const hearing=watchers.filter(w=>distanceXZ(w.position,point)<14);
+  for(const w of hearing){if(w.userData.watchState!=='CHASE'){w.userData.watchState='INVESTIGATE';w.userData.watchTarget.copy(point);w.userData.watchHoldUntil=performance.now()+3600;w.userData.watchReactUntil=performance.now()+280;}}
   investigatePoint.copy(point); if (guardState !== 'CHASE') { guardState = 'INVESTIGATE'; guardReactUntil = performance.now() + 280; }
-  pulseAt(point, 0xffd472); setToast('A sharp clank skips across the stones. The guard follows the sound.', 3.2);
+  pulseAt(point, 0xffd472); setToast(hearing.length ? `The clank carries. ${hearing.length} watcher${hearing.length===1?'':'s'} move${hearing.length===1?'s':''} to investigate.` : 'The sound falls outside the watchers’ hearing.', 3.2);
+  playSfx('sound');
 }
 function shapeshift() {
   if (!playing || distanceXZ(player.position, guard.position) > 12) { setToast('You need a closer look at the royal watch to borrow its uniform.'); return; }
@@ -957,6 +1045,7 @@ function interact() {
     sound = { point: nearest.position.clone(), until: performance.now() + 3200 };
     investigatePoint.copy(nearest.position); if (guardState !== 'CHASE') { guardState = 'INVESTIGATE'; guardReactUntil = performance.now() + 280; }
     pulseAt(nearest.position, palette.gold); setToast(`${nearest.userData.label} rings out. The guard goes to investigate.`, 3);
+    playSfx('bell');
   } else if (nearest.userData.kind === 'crate') {
     const dir = new THREE.Vector3().subVectors(nearest.position, player.position).setY(0).normalize();
     nearest.userData.target.addScaledVector(dir, 1.45);
@@ -972,6 +1061,7 @@ function openBridgeGate(showFeedback = false) {
   if (bridgeGateOpen) return;
   bridgeGateOpen = true;
   if (bridgeGate) bridgeGate.userData.open = true;
+  playSfx('gate');
   if (showFeedback) setToast('The Bridge Gate swings inward. The Rainbow Bridge is waiting beyond.', 3.4);
 }
 
@@ -982,16 +1072,22 @@ function canSeePoint(subject, point) {
   const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(subject.quaternion);
   if (forward.dot(delta.normalize()) < .28) return false;
   for (const o of obstacles) {
-    if (o.kind !== 'crate') continue;
-    const t = THREE.MathUtils.clamp(((o.x - subject.position.x) * (point.x - subject.position.x) + (o.z - subject.position.z) * (point.z - subject.position.z)) / Math.max(.01, d * d), 0, 1);
+    if(o.kind==='rect') {
+      const steps=Math.ceil(d/.28);
+      for(let i=1;i<steps;i++){const t=i/steps,x=subject.position.x+(point.x-subject.position.x)*t,z=subject.position.z+(point.z-subject.position.z)*t;if(x>o.minX&&x<o.maxX&&z>o.minZ&&z<o.maxZ)return false;}
+      continue;
+    }
+    const ox=o.object?.position.x??o.x,oz=o.object?.position.z??o.z;
+    if(!Number.isFinite(ox)||!Number.isFinite(oz))continue;
+    const t = THREE.MathUtils.clamp(((ox - subject.position.x) * (point.x - subject.position.x) + (oz - subject.position.z) * (point.z - subject.position.z)) / Math.max(.01, d * d), .08, .92);
     const cx = subject.position.x + (point.x - subject.position.x) * t, cz = subject.position.z + (point.z - subject.position.z) * t;
-    if (Math.hypot(cx - o.x, cz - o.z) < o.radius) return false;
+    if (Math.hypot(cx - ox, cz - oz) < (o.radius??.7)) return false;
   }
   return true;
 }
-function canSeePlayer() {
+function canSeePlayer(observer = guard) {
   if (player.userData.disguised && lastPlayerSpeed < 4.5) return false;
-  return canSeePoint(guard, player.position.clone().add(new THREE.Vector3(0, 1, 0)));
+  return canSeePoint(observer, player.position.clone().add(new THREE.Vector3(0, 1, 0)));
 }
 
 function updateMovement(dt) {
@@ -1072,68 +1168,62 @@ function animateActor(actor, phase, speed, dt, isPlayer = false) {
 }
 
 function updateGuard(dt, now) {
-  if (!crisis || now - crisisAt < 2300) {
-    const pt = district.guard.points[patrolIndex];
-    const target = new THREE.Vector3(pt.x, 0, pt.z);
-    const dist = distanceXZ(guard.position, target);
-    if (dist < .18) patrolIndex = (patrolIndex + 1) % district.guard.points.length;
-    else moveActor(guard, target, .86, dt);
+  if (!crisis || now - crisisAt < 1800) {
+    for(const w of watchers) w.rotation.y=rotateToward(w.rotation.y,w.userData.postYaw,4*dt);
     return;
   }
-  if (now < guardHoldUntil) {
-    guardState = 'INVESTIGATE';
-    if(now<guardReactUntil) {
-      const face=Math.atan2(investigatePoint.x-guard.position.x,investigatePoint.z-guard.position.z);
-      guard.rotation.y=rotateToward(guard.rotation.y,face,5*dt);
-    } else moveActor(guard, investigatePoint, 2.25, dt);
-    ui.guardState.textContent = guardState; ui.awareness.style.width = Math.round(suspicion * 100) + '%';
-    return;
-  }
-  const sees = canSeePlayer();
-  if (sees) { lastSeenPlayer.copy(player.position); lastSeenUntil=now+2400; }
-  const heard = sound && now < sound.until && distanceXZ(guard.position, sound.point) < 14;
-  if (heard && guardState !== 'CHASE' && !sound.noticed) { sound.noticed=true; guardState = 'INVESTIGATE'; investigatePoint.copy(sound.point); guardReactUntil=now+300; }
-  if (decoy && now < decoyUntil && guardState !== 'CHASE' && distanceXZ(guard.position, decoy.position) < 11) {
-    if (!decoy.userData.noticed) { decoy.userData.noticed=true; guardState = 'INVESTIGATE'; investigatePoint.copy(decoy.position); guardReactUntil=now+300; }
-    else if (guardState==='INVESTIGATE') investigatePoint.copy(decoy.position);
-  }
-  if (sees && !player.userData.disguised) {
-    suspicion = Math.min(1, suspicion + dt * (lastPlayerSpeed > 4.5 ? .82 : .5));
-    guardState = suspicion > .58 ? 'CHASE' : 'SUSPICIOUS';
-  } else if (sees && player.userData.disguised && lastPlayerSpeed > 4.5) {
-    suspicion = Math.min(.72, suspicion + dt * .38); investigatePoint.copy(player.position); guardState = suspicion > .62 ? 'SUSPICIOUS' : guardState;
-  } else if (guardState !== 'INVESTIGATE' && guardState !== 'CHASE') {
-    suspicion = Math.max(0, suspicion - dt * .18);
-  }
-  if (guardState === 'CHASE' && distanceXZ(guard.position, player.position) < 1.1 && !player.userData.disguised) {
-    if (!caughtUntil) { caughtUntil = now + 1650; setToast('Caught! The guard asks for your apple-search credentials.', 2); }
-    if (now > caughtUntil) resetAfterCaught();
-    return;
-  }
-  if(guardState==='CHASE' && !sees && distanceXZ(guard.position,lastSeenPlayer)<.55) {
-    guardState='SUSPICIOUS'; suspicion=Math.min(suspicion,.38); investigatePoint.copy(lastSeenPlayer);
-  }
-  let target, speed = district.guard.speed;
-  if (guardState === 'CHASE') { target = sees ? player.position : lastSeenPlayer; speed = 2.7; }
-  else if (guardState === 'INVESTIGATE' || guardState === 'SUSPICIOUS') {
-    target = investigatePoint; speed = guardState === 'SUSPICIOUS' ? .12 : 1.8;
-    if (distanceXZ(guard.position, target) < .5) {
-      guardState = 'SUSPICIOUS';
-      if ((!sound || now > sound.until) && (!decoy || now > decoyUntil)) {
-        suspicion = Math.max(0, suspicion - dt * .24);
-        if (suspicion < .08) guardState = 'RETURN';
-      }
+  const states=[]; let maxSuspicion=0;
+  for(const w of watchers) {
+    const d=w.userData;
+    let sees=canSeePlayer(w);
+    if(sees) { d.watchLastSeen.copy(player.position); d.watchLastSeenUntil=now+2400; }
+    if(sound&&now<sound.until&&distanceXZ(w.position,sound.point)<14&&d.watchState!=='CHASE'&&d.lastHeard!==sound) {
+      d.lastHeard=sound;d.watchTarget.copy(sound.point);d.watchState='INVESTIGATE';d.watchHoldUntil=now+3200;d.watchReactUntil=now+280;
     }
-  } else {
-    if (guardState === 'RETURN') { guardState = 'PATROL'; }
-    const pt = district.guard.points[patrolIndex]; target = new THREE.Vector3(pt.x, 0, pt.z);
-    if (distanceXZ(guard.position, target) < .2) patrolIndex = (patrolIndex + 1) % district.guard.points.length;
+    if(decoy&&now<decoyUntil&&distanceXZ(w.position,decoy.position)<11&&canSeePoint(w,decoy.position)&&d.watchState!=='CHASE'&&d.lastDecoy!==decoy) {
+      d.lastDecoy=decoy;d.watchTarget.copy(decoy.position);d.watchState='INVESTIGATE';d.watchHoldUntil=now+5200;d.watchReactUntil=now+300;
+    }
+    if(sees&&!player.userData.disguised) {
+      d.watchSuspicion=Math.min(1,d.watchSuspicion+dt*(lastPlayerSpeed>4.5?.82:.5));
+      if(d.watchSuspicion>.58)d.watchState='CHASE'; else if(d.watchState!=='INVESTIGATE')d.watchState='SUSPICIOUS';
+    } else if(sees&&player.userData.disguised&&lastPlayerSpeed>4.5) {
+      d.watchSuspicion=Math.min(.72,d.watchSuspicion+dt*.38);d.watchTarget.copy(player.position);
+      if(d.watchSuspicion>.62)d.watchState='SUSPICIOUS';
+    } else if(d.watchState!=='INVESTIGATE'&&d.watchState!=='CHASE') d.watchSuspicion=Math.max(0,d.watchSuspicion-dt*.18);
+    if(d.watchState==='CHASE'&&!sees&&now>d.watchLastSeenUntil&&distanceXZ(w.position,d.watchLastSeen)<.65) {
+      d.watchState='SUSPICIOUS';d.watchSuspicion=Math.min(d.watchSuspicion,.38);
+    }
+    if(d.watchState==='CHASE'&&!player.userData.disguised&&distanceXZ(w.position,player.position)<1.1) {
+      if(!caughtUntil){caughtUntil=now+1650;setToast('Caught! Five helmets all want to see your apple-search credentials.',2);playSfx('caught');speakGuide('Caught. Take a breath, then try a different trick.');}
+      if(now>caughtUntil)resetAfterCaught();
+      return;
+    }
+    let target=null,speed=0;
+    if(d.watchState==='CHASE'){target=sees?player.position:d.watchLastSeen;speed=2.7;}
+    else if(d.watchState==='INVESTIGATE') {
+      if(now<d.watchReactUntil) { const face=Math.atan2(d.watchTarget.x-w.position.x,d.watchTarget.z-w.position.z);w.rotation.y=rotateToward(w.rotation.y,face,5*dt); }
+      else if(distanceXZ(w.position,d.watchTarget)>.48){target=d.watchTarget;speed=1.8;}
+      else if(now>d.watchHoldUntil)d.watchState='RETURN';
+    }
+    if(d.watchState==='SUSPICIOUS') {
+      const face=Math.atan2(d.watchLastSeen.x-w.position.x,d.watchLastSeen.z-w.position.z);w.rotation.y=rotateToward(w.rotation.y,face,3.6*dt);
+      if(d.watchSuspicion<.08)d.watchState='RETURN';
+    }
+    if(d.watchState==='RETURN') {
+      if(distanceXZ(w.position,d.postPosition)>.22){target=d.postPosition;speed=1.35;} else d.watchState='PATROL';
+    }
+    if(d.watchState==='PATROL')w.rotation.y=rotateToward(w.rotation.y,d.postYaw,3.4*dt);
+    if(target)moveActor(w,target,speed,dt);
+    const ringColor = d.watchState === 'CHASE' ? 0xe64c3d : d.watchState === 'INVESTIGATE' || d.watchState === 'SUSPICIOUS' ? 0xe6a844 : d.watchState === 'RETURN' ? 0x93a76b : 0xd8ad5e;
+    d.postRingMaterial.color.setHex(ringColor);
+    d.postRingMaterial.opacity = d.watchState === 'CHASE' ? .82 + Math.sin(now * .012) * .12 : d.watchState === 'PATROL' ? .32 : .62;
+    states.push(d.watchState);maxSuspicion=Math.max(maxSuspicion,d.watchSuspicion);
   }
-  moveActor(guard, target, speed, dt);
-  ui.guardState.textContent = guardState;
-  ui.awareness.style.width = `${Math.round(suspicion * 100)}%`;
-  if (decoy && now > decoyUntil) { scene.remove(decoy); decoy = null; setToast('The emerald afterimage fizzles out.', 1.9); }
-  if (sound && now > sound.until) sound = null;
+  const priority=['CHASE','INVESTIGATE','SUSPICIOUS','RETURN','PATROL'];
+  guardState=priority.find(s=>states.includes(s))??'PATROL';
+  suspicion=maxSuspicion;ui.guardState.textContent=guardState;ui.awareness.style.width=`${Math.round(suspicion*100)}%`;
+  if(decoy&&now>decoyUntil){scene.remove(decoy);decoy=null;setToast('The emerald afterimage fizzles out.',1.9);}
+  if(sound&&now>sound.until)sound=null;
 }
 function moveActor(actor, target, speed, dt) {
   if (!target) return;
@@ -1149,6 +1239,7 @@ function moveActor(actor, target, speed, dt) {
 function resetAfterCaught() {
   caughtUntil = 0; guardState = 'PATROL'; suspicion = .1;
   const start = district.playerStart; player.position.set(start.x, 0, start.z); moveVelocity.set(0, 0, 0);
+  for(const w of watchers){const d=w.userData;w.position.copy(d.postPosition);w.rotation.y=d.postYaw;d.watchState='PATROL';d.watchSuspicion=0;d.watchTarget.copy(d.postPosition);d.watchLastSeen.copy(d.postPosition);d.watchHoldUntil=0;d.lastHeard=null;d.lastDecoy=null;}
   player.userData.disguised = false; setToast('Loki is released with a warning and a tiny lecture about apples.', 3.2);
 }
 
@@ -1159,7 +1250,7 @@ function updateCamera(dt) {
   const hits = raycaster.intersectObjects(cameraBlockers, true);
   const hit = hits.find(h => {
     if (h.distance <= .55 || h.object.userData.noCameraCollision) return false;
-    for (let o = h.object; o; o = o.parent) if (o === player || o === guard || npcs.some(n => n.object === o)) return false;
+    for (let o = h.object; o; o = o.parent) if (o === player || watchers.includes(o) || npcs.some(n => n.object === o)) return false;
     return true;
   });
   const targetDistance = hit ? Math.max(1.25, hit.distance - .28) : cameraDistance;
@@ -1185,11 +1276,12 @@ function checkEscape(now) {
     ui.objective.textContent='CROSS THE RAINBOW BRIDGE';
     ui.subtitle.textContent='The Bifrost pavilion is at the far end.';
     setToast('Bridge Gate cleared. The guard stays on the courtyard side.',3);
+    lastGuideKey = '';
   }
   for (const exit of district.escape) {
     if (distanceXZ(player.position, exit) > exit.radius) continue;
     if(exit.id==='west-side-passage' && !bridgeStarted) {
-      bridgeStarted=true; ui.objective.textContent='CROSS THE RAINBOW BRIDGE'; ui.subtitle.textContent='The West Passage joins the bridge beyond the gate.';
+      bridgeStarted=true; ui.objective.textContent='CROSS THE RAINBOW BRIDGE'; ui.subtitle.textContent='The West Passage joins the bridge beyond the gate.'; lastGuideKey = '';
       setToast('The West Passage skips the gate and joins the bridge. The watch is still searching.',3.4);
       return;
     }
@@ -1205,6 +1297,7 @@ function finishTrouble() {
   }
   closeDialogue();
   escaped = true; playing = false; setMap(false); ui.map.classList.add('hidden'); ui.hud.classList.add('hidden'); ui.crosshair.classList.add('hidden');
+  playSfx('portal'); if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   moveVelocity.set(0, 0, 0); teleporting=true; teleportStarted=performance.now(); montageQueued=false;
   const flash=document.createElement('div'); flash.className='bifrost-flash'; document.body.append(flash); setTimeout(()=>flash.remove(),950);
   setToast('The Bifrost takes Loki somewhere unexpected…',1.4);
@@ -1291,10 +1384,11 @@ function drawMap(full = false) {
     const [x,y]=to(npc.object.position); ctx.fillStyle='#5d874e'; ctx.strokeStyle='#f8e5b7'; ctx.lineWidth=full?3:2;
     ctx.beginPath(); ctx.arc(x,y,full?7:5,0,Math.PI*2); ctx.fill(); ctx.stroke();
   }
-  for (const r of district.guard.points) {
-    const [x, y] = to(r); ctx.fillStyle = '#ac5143'; ctx.beginPath(); ctx.arc(x, y, full ? 7 : 5, 0, Math.PI * 2); ctx.fill();
-  }
-  if (guard) { const [x, y] = to(guard.position); ctx.fillStyle = '#b13c39'; ctx.strokeStyle = '#fff2d5'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, full ? 10 : 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+  watchers.forEach((w,index)=>{
+    const [x,y]=to(w.position);ctx.fillStyle=w.userData.watchState==='CHASE'?'#de4437':w.userData.watchState==='INVESTIGATE'?'#e3a93e':'#ac5143';ctx.strokeStyle='#fff2d5';ctx.lineWidth=full?3:2;
+    ctx.beginPath();ctx.arc(x,y,full?8:6,0,Math.PI*2);ctx.fill();ctx.stroke();
+    if(full){ctx.fillStyle='#553932';ctx.font='800 10px system-ui';ctx.fillText(`W${index+1}`,x+8,y-7);}
+  });
   if (player) {
     const [x, y] = to(player.position); ctx.fillStyle = '#216a43'; ctx.strokeStyle = '#fff1c8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, full ? 11 : 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = '#216a43'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(player.rotation.y) * 19, y - Math.cos(player.rotation.y) * 19); ctx.stroke();
@@ -1317,6 +1411,7 @@ function updateHud(now) {
   else if(!bridgeStarted) ui.prompt.innerHTML = '<b>Q</b> illusion · <b>E</b> sound · <b>F</b> disguise · Bridge Gate or West Passage';
   else ui.prompt.innerHTML='<b>Q</b> illusion · <b>E</b> sound · <b>F</b> disguise · reach the pavilion';
   if (player.userData.disguised) ui.prompt.innerHTML += ` <span style="color:#ecd27a">· BORROWED FACE ${Math.ceil((disguisedUntil - now) / 1000)}s</span>`;
+  updateGuide();
   if (now > toastUntil) ui.toast.classList.add('hidden');
   if (mapOpen) drawMap(true);
   else if (playing) drawMap(false);
@@ -1370,6 +1465,8 @@ function bindUi() {
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.parentElement.classList.add('hidden'));
   ui.map.addEventListener('click', e => { if (e.target === ui.map) setMap(false); });
   $('dialogue-close').onclick = closeDialogue;
+  guideUi.voice.onclick = () => { voiceEnabled = !voiceEnabled; guideUi.voice.textContent = voiceEnabled ? 'VOICE ON' : 'VOICE OFF'; guideUi.voice.setAttribute('aria-pressed', String(voiceEnabled)); if (!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel(); else { lastGuideKey = ''; updateGuide(); } unlockAudio(); };
+  guideUi.sfx.onclick = () => { sfxEnabled = !sfxEnabled; guideUi.sfx.textContent = sfxEnabled ? 'SFX ON' : 'SFX OFF'; guideUi.sfx.setAttribute('aria-pressed', String(sfxEnabled)); unlockAudio(); if (sfxEnabled) playSfx('illusion'); };
 }
 
 async function init() {

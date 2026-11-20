@@ -19,14 +19,16 @@ The Three.js package is bundled locally by Vite. The running game does not fetch
 - **T:** talk to a nearby character; your bluff, compliment or joke changes what they do next. **F:** borrow the guard's appearance; **Space:** ring a nearby bell or shove a crate.
 - **M:** expand or collapse the district map; **P / Esc:** pause; **R:** restart.
 
-Watch the patrol, then get through the Bifrost or slip out via the west gallery passage. An illusion, sound, moving cover, or a calm disguise can change the guard's behavior. There is no combat.
+Read the five royal watch posts, then get through the Bifrost or slip out via the west gallery passage. An illusion, sound, moving cover, a calm disguise, or a well-chosen conversation can change what nearby watchers do. There is no combat.
+
+The Field Notes panel gives short, contextual directions. Browser speech synthesis and original oscillator sound cues are enabled by default; use **VOICE** and **SFX** in that panel to turn them off. Speech voices are supplied by the browser/operating system and are not downloaded by the game.
 
 ## District map data
 
-Edit `public/data/asgard-district.json`. `bounds`, player start, gate, crisis trigger, guard patrol, named landmarks, route polylines, interaction props and escape markers are stored in world-plane `x`/`z` coordinates (metres). The scene lays route paths and the on-screen map from this file. Keep the west passage aligned to its `escape` coordinate if moving the map.
+Edit `public/data/asgard-district.json`. `bounds`, player start, gate, crisis trigger, the five named guard posts and their facing directions, named landmarks, route polylines, interaction props and escape markers are stored in world-plane `x`/`z` coordinates (metres). Each guard point includes `post` and an optional `look` vector (`x`/`z`); changing its position or facing updates the scene and minimap. Illusions attract watchers who can see them, and sounds attract watchers in hearing range. The scene lays route paths and the on-screen map from this file. Keep the west passage aligned to its `escape` coordinate if moving the map.
 
 ## Scope and asset rights
 
-The playable slice is one connected courtyard trouble with an opening menu, a live map, one systemic guard, a small prop set, an illusion, misdirection, disguise, and a short comic montage/portal ending. Character and environment forms are procedural, original placeholders. No MCU models, screenshots, logos, voices or music are included. Existing reference boards and the original Unity resources remain in the parent project for art guidance; this browser version does not modify the Unity scenes or assets.
+The playable slice is one connected courtyard trouble with an opening menu, a live map, five systemic royal watchers at distinct posts, a small prop set, an illusion, misdirection, disguise, contextual coaching and original lightweight sound cues, followed by a short comic montage/portal ending. Character and environment forms are procedural, original placeholders. No MCU models, screenshots, logos, voices or music are included. Existing reference boards and the original Unity resources remain in the parent project for art guidance; this browser version does not modify the Unity scenes or assets.
 
 Three.js is MIT licensed. The exact package license is included under `node_modules/three/LICENSE` after installation; retain it with redistributed builds.
