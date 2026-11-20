@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "bounds": { "minX": -11, "maxX": 11, "minZ": -8, "maxZ": 9 },
+  "playerStart": { "x": 0, "z": -5.7 },
+  "gate": { "x": 0, "z": 7.2 },
+  "patrol": { "points": [{"x":-1.5,"z":2.25},{"x":1.5,"z":2.25}], "speed": 1.25 },
+  "interactions": [
+    { "id":"bell", "type":"bell", "x":-4.6, "z":-1.5, "radius":2.1, "label":"RING THE BELL" },
+    { "id":"apple", "type":"prop", "x":5.1, "z":-0.2, "radius":1.8, "label":"ODIN'S APPLE?" },
+    { "id":"illusion", "type":"illusion", "x":-4.1, "z":3.6, "radius":3.2, "label":"CAST ILLUSION" }
+  ],
+  "district": { "title":"GOLDEN COURT", "note":"A small corner of Asgard. Definitely not a giant map." }
+}
