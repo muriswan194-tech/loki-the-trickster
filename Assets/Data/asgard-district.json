@@ -1,13 +1,222 @@
 {
-  "version": 1,
-  "bounds": { "minX": -11, "maxX": 11, "minZ": -8, "maxZ": 9 },
-  "playerStart": { "x": 0, "z": -5.7 },
-  "gate": { "x": 0, "z": 7.2 },
-  "patrol": { "points": [{"x":-1.5,"z":2.25},{"x":1.5,"z":2.25}], "speed": 1.25 },
-  "interactions": [
-    { "id":"bell", "type":"bell", "x":-4.6, "z":-1.5, "radius":2.1, "label":"RING THE BELL" },
-    { "id":"apple", "type":"prop", "x":5.1, "z":-0.2, "radius":1.8, "label":"ODIN'S APPLE?" },
-    { "id":"illusion", "type":"illusion", "x":-4.1, "z":3.6, "radius":3.2, "label":"CAST ILLUSION" }
+  "version": 2,
+  "bounds": {
+    "minX": -15.5,
+    "maxX": 15.5,
+    "minZ": -11.7,
+    "maxZ": 10
+  },
+  "playerStart": {
+    "x": 0,
+    "z": 0
+  },
+  "triggers": [
+    {
+      "id": "apple-search-crisis",
+      "type": "trouble-encounter",
+      "x": 0,
+      "z": 5.5,
+      "radius": 1.75
+    }
   ],
-  "district": { "title":"GOLDEN COURT", "note":"A small corner of Asgard. Definitely not a giant map." }
+  "guard": {
+    "speed": 1.45,
+    "points": [
+      {
+        "x": -1.8,
+        "z": 2.8
+      },
+      {
+        "x": 1.8,
+        "z": 2.8
+      }
+    ]
+  },
+  "interactions": [
+    {
+      "id": "bell",
+      "type": "bell",
+      "x": -5.4,
+      "z": 0.2,
+      "radius": 1.9,
+      "label": "COURT BELL",
+      "noisy": true,
+      "hearing": 12,
+      "distraction": 1.5
+    },
+    {
+      "id": "signal-lamp",
+      "type": "prop",
+      "x": 5.8,
+      "z": 1.3,
+      "radius": 1.9,
+      "label": "SIGNAL LAMP",
+      "noisy": true,
+      "hearing": 9,
+      "distraction": 2.5
+    },
+    {
+      "id": "mirror",
+      "type": "illusion",
+      "x": -5.7,
+      "z": 4.8,
+      "radius": 2.3,
+      "label": "LOOKING GLASS",
+      "solid": true
+    },
+    {
+      "id": "crate-a",
+      "type": "crate",
+      "x": -3.8,
+      "z": -1.5,
+      "radius": 1.8,
+      "label": "MARKET CRATE",
+      "noisy": true,
+      "movable": true,
+      "solid": true,
+      "hearing": 9
+    },
+    {
+      "id": "crate-b",
+      "type": "crate",
+      "x": 3.5,
+      "z": -1.2,
+      "radius": 1.8,
+      "label": "MARKET CRATE",
+      "noisy": true,
+      "movable": true,
+      "solid": true,
+      "hearing": 9
+    },
+    {
+      "id": "odin-sceptre",
+      "type": "hidden",
+      "x": -6.65,
+      "z": -4.7,
+      "radius": 1.65,
+      "label": "a curious glint",
+      "noisy": false,
+      "movable": false,
+      "solid": false,
+      "hearing": 0,
+      "distraction": 0
+    },
+    {
+      "id": "frigga-tesseract",
+      "type": "hidden",
+      "x": 6.65,
+      "z": -4.7,
+      "radius": 1.65,
+      "label": "a strange blue glimmer",
+      "noisy": false,
+      "movable": false,
+      "solid": false,
+      "hearing": 0,
+      "distraction": 0
+    },
+    {
+      "id": "hearth-flame",
+      "type": "flame",
+      "x": 8.1,
+      "z": -2.6,
+      "radius": 1.7,
+      "label": "FRIGGA HEARTH",
+      "noisy": false,
+      "movable": false,
+      "solid": false,
+      "hearing": 8,
+      "distraction": 0
+    },
+    {
+      "id": "west-gallery-bell",
+      "type": "bell",
+      "x": -13.1,
+      "z": 5.2,
+      "radius": 1.8,
+      "label": "WEST GALLERY BELL",
+      "noisy": true,
+      "hearing": 10,
+      "distraction": 1
+    },
+    {
+      "id": "east-orchard-bell",
+      "type": "bell",
+      "x": 13.1,
+      "z": -6.2,
+      "radius": 1.8,
+      "label": "ORCHARD BELL",
+      "noisy": true,
+      "hearing": 10,
+      "distraction": 1
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "asgard-square",
+      "type": "square",
+      "x": 0,
+      "z": -0.2
+    },
+    {
+      "id": "east-fountain",
+      "type": "fountain",
+      "x": 6.2,
+      "z": -3.8
+    },
+    {
+      "id": "side-alley",
+      "type": "alley",
+      "x": -7.2,
+      "z": 0.8
+    },
+    {
+      "id": "bifrost-approach",
+      "type": "gate",
+      "x": 0,
+      "z": 8.15
+    },
+    {
+      "id": "market-square",
+      "type": "market",
+      "x": 6.9,
+      "z": -0.15
+    },
+    {
+      "id": "odin-study",
+      "type": "residence",
+      "x": -8.8,
+      "z": -5.55
+    },
+    {
+      "id": "frigga-house",
+      "type": "residence",
+      "x": 8.8,
+      "z": -5.55
+    },
+    {
+      "id": "west-gallery",
+      "type": "promenade",
+      "x": -13.15,
+      "z": -1.35
+    },
+    {
+      "id": "east-orchard",
+      "type": "promenade",
+      "x": 13.15,
+      "z": -1.35
+    },
+    {
+      "id": "south-garden-walk",
+      "type": "promenade",
+      "x": 0,
+      "z": -10.15
+    }
+  ],
+  "routes": [
+    { "id": "bifrost-approach", "width": 5.7, "points": [{ "x": 0, "z": -0.2 }, { "x": 0, "z": 8.15 }] },
+    { "id": "west-gallery", "width": 3.7, "points": [{ "x": -13.15, "z": -10.5 }, { "x": -13.15, "z": 8.0 }] },
+    { "id": "east-orchard", "width": 3.7, "points": [{ "x": 13.15, "z": -10.5 }, { "x": 13.15, "z": 8.0 }] },
+    { "id": "south-garden-walk", "width": 3.3, "points": [{ "x": -13.15, "z": -10.15 }, { "x": 13.15, "z": -10.15 }] },
+    { "id": "west-side-alley", "width": 3.8, "points": [{ "x": -7.1, "z": -5.8 }, { "x": -7.1, "z": 7.4 }] }
+  ]
 }

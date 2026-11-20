@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "bounds": { "minX": -23, "maxX": 23, "minZ": -12.5, "maxZ": 88 },
+  "playerStart": { "x": 0, "z": -6.5 },
+  "gate": { "x": 0, "z": 8.15 },
+  "crisisTrigger": { "x": 0, "z": 4.9, "radius": 1.75 },
+  "guard": {
+    "speed": 1.55,
+    "points": [
+      { "x": -4.2, "z": 12.5, "post": "SouthGate", "pause": 1.5, "look": { "x": 0, "z": -1 } },
+      { "x": 6.5, "z": 14 },
+      { "x": 6.5, "z": 21 },
+      { "x": 14.4, "z": 28.2, "post": "EastLane", "pause": 1.5, "look": { "x": 0.55, "z": -0.84 } },
+      { "x": 6.5, "z": 35.5 },
+      { "x": 6.5, "z": 42 },
+      { "x": -6.5, "z": 42 },
+      { "x": -6.5, "z": 44.3, "post": "NorthDoor", "pause": 1.5, "look": { "x": 0, "z": -1 } },
+      { "x": -6.5, "z": 34 },
+      { "x": -6.5, "z": 22 },
+      { "x": -6.5, "z": 14 }
+    ]
+  },
+  "npcs": [
+    { "id": "royal-watch", "type": "guard", "name": "Royal Watch", "talkRadius": 3.6 },
+    { "id": "apple-vendor", "type": "vendor", "name": "Mira, Apple Vendor", "x": 8.7, "z": 0.4, "talkRadius": 2.4 }
+  ],
+  "routes": [
+    { "id": "bifrost-approach", "width": 5.7, "points": [{ "x": 0, "z": -0.2 }, { "x": 0, "z": 8.15 }] },
+    { "id": "west-gallery", "width": 3.7, "points": [{ "x": -13.15, "z": -10.5 }, { "x": -13.15, "z": 8.0 }] },
+    { "id": "east-orchard", "width": 3.7, "points": [{ "x": 13.15, "z": -10.5 }, { "x": 13.15, "z": 8.0 }] },
+    { "id": "south-garden-walk", "width": 3.3, "points": [{ "x": -13.15, "z": -10.15 }, { "x": 13.15, "z": -10.15 }] },
+    { "id": "west-side-alley", "width": 3.8, "points": [{ "x": -7.1, "z": -5.8 }, { "x": -7.1, "z": 7.4 }] },
+    { "id": "court-west-lane", "width": 4.6, "points": [{ "x": -6.5, "z": 10 }, { "x": -6.5, "z": 44 }] },
+    { "id": "court-east-lane", "width": 4.6, "points": [{ "x": 6.5, "z": 10 }, { "x": 6.5, "z": 44 }] },
+    { "id": "east-service-approach", "width": 2.4, "points": [{ "x": 13.15, "z": 8 }, { "x": 15.2, "z": 7.5 }, { "x": 17.25, "z": 7.5 }, { "x": 17.25, "z": 10 }, { "x": 17.25, "z": 28.2 }, { "x": 20, "z": 28.2 }] },
+    { "id": "bridge-deck", "width": 6, "points": [{ "x": 0, "z": 50 }, { "x": 0, "z": 80 }] },
+    { "id": "west-passage-bridge-link", "width": 2.6, "points": [{ "x": -19, "z": 46.2 }, { "x": -17, "z": 50.2 }, { "x": 0, "z": 50.2 }] },
+    { "id": "court-south-crossing", "width": 3.2, "points": [{ "x": -6.5, "z": 14 }, { "x": 6.5, "z": 14 }] },
+    { "id": "court-north-crossing", "width": 3.2, "points": [{ "x": -6.5, "z": 42 }, { "x": 6.5, "z": 42 }] }
+  ],
+  "landmarks": [
+    { "id": "square", "x": 0, "z": -0.2, "label": "SUN COURT" },
+    { "id": "fountain", "x": 6.2, "z": -3.8, "label": "STAR FOUNTAIN" },
+    { "id": "market", "x": 6.9, "z": -0.15, "label": "APPLE MARKET" },
+    { "id": "study", "x": -8.8, "z": -5.55, "label": "ODIN'S STUDY" },
+    { "id": "house", "x": 8.8, "z": -5.55, "label": "FRIGGA'S HOUSE" },
+    { "id": "west-gallery", "x": -13.15, "z": -1.35, "label": "WEST GALLERY" },
+    { "id": "east-orchard", "x": 13.15, "z": -1.35, "label": "EAST ORCHARD" },
+    { "id": "court-gate", "x": 0, "z": 8.15, "label": "COURT GATE" },
+    { "id": "bridge-gate", "x": 0, "z": 48.15, "label": "BRIDGE GATE" },
+    { "id": "bifrost-pavilion", "x": 0, "z": 83.5, "label": "BIFROST PAVILION" },
+    { "id": "palace-court", "x": 0, "z": 28.2, "label": "PALACE COURTYARD" },
+    { "id": "south-walk", "x": 0, "z": -10.15, "label": "GARDEN WALK" }
+  ],
+  "props": [
+    { "id": "court-bell", "type": "bell", "x": -5.4, "z": 0.2, "radius": 1.9, "label": "COURT BELL", "noise": 12 },
+    { "id": "signal-bell", "type": "bell", "x": 5.8, "z": 1.3, "radius": 1.9, "label": "SIGNAL BELL", "noise": 9 },
+    { "id": "market-crate-west", "type": "crate", "x": -3.8, "z": -1.5, "radius": 1.8, "label": "MARKET CRATE", "noise": 9 },
+    { "id": "market-crate-east", "type": "crate", "x": 3.5, "z": -1.2, "radius": 1.8, "label": "MARKET CRATE", "noise": 9 },
+    { "id": "palace-bell", "type": "bell", "x": 11.3, "z": 28.2, "radius": 2.2, "label": "PALACE BELL", "noise": 12 }
+  ],
+  "escape": [
+    { "id": "west-side-passage", "x": -19, "z": 46.2, "radius": 1.55, "leadsTo": "rainbow-bridge" },
+    { "id": "bifrost-pavilion", "x": 0, "z": 83.5, "radius": 3.1, "completes": true }
+  ]
+}

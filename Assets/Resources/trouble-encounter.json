@@ -1,0 +1,20 @@
+{
+  "encounters": [
+    {
+      "id": "odin-apple-lockdown",
+      "title": "The Missing Golden Apple",
+      "guestCharacterId": "asgardian-watch",
+      "guestDisplayName": "Royal Watch",
+      "triggerId": "apple-search-crisis",
+      "jamActive": true,
+      "selectionWeight": 1.0,
+      "firstLine": "The Bifrost is sealed. The watch is searching for Odin’s missing golden apple.",
+      "alarmLine": "If you find it, please return it. It is definitely not in my pocket.",
+      "epilogueScene": "Assets/Scenes/LokabrennaEpilogue.unity",
+      "epilogue": [
+        "ROYAL WATCH: The Bifrost is closed while we search for Odin’s missing golden apple.",
+        "LOKI: A tragic day for apples. And for gates."
+      ]
+    }
+  ]
+}
